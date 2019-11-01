@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script>
+    window.onerror = async function (message, file, line) {
+      const user_id = 'an34k2n3sdkfj3kl2';
+      const url = `http://localhost:8080/api/${user_id}/error`;
+      const data = {
+        context: navigator.userAgent,
+        error: message,
+        file: file,
+        line: line,
+      };
+      const response = await fetch(url, {
+        method: 'POST', // or 'PUT'
+        body: JSON.stringify(data), // data can be `string` or {object}!
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const json = await response.json();
+      console.log('Success:', json);
+    };
+  </script>
+  <meta charset="utf-8" />
+  <title>Test App</title>
+</head>
+
+<body>
+  <h1>This is a test app for error logging</h1>
+  <h3></h3>
+  <script>
+    console.log(tate);
+  </script>
+</body>
+
+</html>
