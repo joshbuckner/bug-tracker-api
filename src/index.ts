@@ -1,8 +1,15 @@
+import bcrypt from "bcryptjs";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import md5 from "md5";
+import jwt from "jsonwebtoken";
+import passport from "passport";
 import db from "./database";
+
+// Load input validation
+import validateEvent from "./validation/event";
+import validateLoginInput from "./validation/login";
+import validateRegisterInput from "./validation/register";
 
 // init express
 const app = express();
@@ -11,6 +18,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
+
+// tslint:disable-next-line: no-var-requires
+require("./passport")(passport);
 
 app.get("/", (req, res) => {
   return res.send("Hi!");
@@ -31,88 +42,122 @@ app.get("/api/users", (req, res, next) => {
   });
 });
 
-app.post("/api/user/", (req, res, next) => {
-  const errors = [];
-  if (!req.body.access_token) {
-    errors.push("No access_token specified");
+// register user
+app.post("/api/register/", (req, res, next) => {
+  let passwordHash: string;
+  const { email, password, name, access_token } = req.body;
+  const { errors, isValid } = validateRegisterInput(req.body);
+  if (!isValid) {
+    return res.status(400).json(errors);
   }
-  if (!req.body.password) {
-    errors.push("No password specified");
-  }
-  if (!req.body.email) {
-    errors.push("No email specified");
-  }
-  if (errors.length) {
-    res.status(400).json({ error: errors.join(",") });
-    return;
-  }
-  const data = {
-    access_token: req.body.access_token,
-    email: req.body.email,
-    name: req.body.name,
-    password: md5(req.body.password),
-  };
-  const sql = "INSERT INTO users (name, email, password, access_token) VALUES (?,?,?,?)";
-  const params = [data.name, data.email, data.password, data.access_token];
-  db.run(sql, params, function(err: { message: any; }, result: any) {
+  bcrypt.genSalt(10, (error, salt) => {
+    bcrypt.hash(password, salt, (er, hash) => {
+      if (er) {
+        throw er;
+      }
+      passwordHash = hash;
+    });
+  });
+  const query = "select * from users where email = ?";
+  db.get(query, email, (err, row) => {
     if (err) {
       res.status(400).json({ error: err.message });
       return;
     }
-    res.json({
-      data,
-      id: this.lastID,
-      message: "success",
+    if (row) {
+      res.status(400).json({ error: "Email already exists" });
+    } else {
+      const sql =
+        "INSERT INTO users (name, email, password, access_token) VALUES (?,?,?,?)";
+      const params = [name, email, passwordHash, access_token];
+      db.run(sql, params, function(error: { message: any }, result: any) {
+        if (error) {
+          res.status(400).json({ error: error.message });
+          return;
+        }
+        res.json({
+          id: this.lastID,
+          message: "success",
+          params,
+        });
+      });
+    }
+  });
+});
+
+// login user
+app.post("/api/login/", (req, res, next) => {
+  const { email, password } = req.body;
+  const { errors, isValid } = validateLoginInput(req.body);
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+  const query = "select * from users where email = ?";
+  db.get(query, email, (err, row) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Email not found" });
+    }
+    // Check password
+    bcrypt.compare(password, row.password).then((isMatch) => {
+      if (isMatch) {
+        // User matched
+        // Create JWT Payload
+        const payload = {
+          id: row.id,
+          name: row.name,
+        };
+        // Sign token
+        jwt.sign(
+          payload,
+          process.env.SECRET_OR_KEY,
+          {
+            expiresIn: 31556926, // 1 year in seconds
+          },
+          (error, token) => {
+            res.json({
+              success: true,
+              token: "Bearer " + token,
+            });
+          },
+        );
+      } else {
+        return res
+          .status(400)
+          .json({ passwordincorrect: "Password incorrect" });
+      }
     });
   });
 });
 
-app.post("/api/event/:id/", (req, res) => {
-  const errors = [];
-  if (!req.body.message) {
-    errors.push("No message specified");
+// incoming event from snippet
+app.post("/api/event/:access_token/", (req, res) => {
+  const { date, message, file, line, column, error } = req.body;
+  const { access_token } = req.params;
+  const { errors, isValid } = validateEvent(req.body);
+  if (!isValid) {
+    return res.status(400).json(errors);
   }
-  if (!req.body.file) {
-    errors.push("No file specified");
-  }
-  if (!req.body.line) {
-    errors.push("No line specified");
-  }
-  if (!req.body.column) {
-    errors.push("No column specified");
-  }
-  if (!req.body.error) {
-    errors.push("No error specified");
-  }
-  if (errors.length) {
-    res.status(400).json({ error: errors.join(",") });
-    return;
-  }
-  const data = {
-    access_token: req.params.id,
-    column: req.body.column,
-    error: req.body.error,
-    file: req.body.file,
-    line: req.body.line,
-    message: req.body.message,
-  };
   const query = "select * from users where access_token = ?";
-  db.get(query, data.access_token, (err, row) => {
+  db.get(query, access_token, (err, row) => {
     if (err) {
-      res.status(400).json({error: err.message});
+      res.status(400).json({ error: err.message });
       return;
     }
-    const sql = "INSERT INTO events (user_id, message, file, line, column, error) VALUES (?,?,?,?,?,?)";
-    const params = [row.id, data.message, data.file, data.line, data.column, data.error];
-    db.run(sql, params, (error: { message: any; }, result: any) => {
-      if (err) {
-        res.status(400).json({ error: err.message });
+    const sql =
+      "INSERT INTO events (user_id, date, message, file, line, column, error) VALUES (?,?,?,?,?,?,?)";
+    const params = [row.id, date, message, file, line, column, error];
+    db.run(sql, params, (insertErr: { message: any }, result: any) => {
+      if (insertErr) {
+        res.status(400).json({ error: insertErr.message });
         return;
       }
       res.json({
-        data,
         message: "success",
-        row,
+        params,
       });
     });
   });

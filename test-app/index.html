@@ -4,9 +4,10 @@
 <head>
   <script>
     window.onerror = async function (message, file, line, column, error) {
-      const user_id = 'an34k2n3sdkfj3kl2';
-      const url = `http://localhost:8080/api/event/${user_id}`;
+      const access_token = 'an34k2n3sdkfj3kl2';
+      const url = `http://localhost:8080/api/event/${access_token}`;
       const data = {
+        date: new Date(),
         message: message,
         file: file,
         line: line,

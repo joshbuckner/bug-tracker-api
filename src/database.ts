@@ -34,6 +34,7 @@ const dbSchema = `CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS events (
   event_id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
+  date text,
   message text,
   file text,
   line text,
