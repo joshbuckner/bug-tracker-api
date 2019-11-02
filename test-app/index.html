@@ -3,14 +3,15 @@
 
 <head>
   <script>
-    window.onerror = async function (message, file, line) {
+    window.onerror = async function (message, file, line, column, error) {
       const user_id = 'an34k2n3sdkfj3kl2';
-      const url = `http://localhost:8080/api/${user_id}/error`;
+      const url = `http://localhost:8080/api/event/${user_id}`;
       const data = {
-        context: navigator.userAgent,
-        error: message,
+        message: message,
         file: file,
         line: line,
+        column: column,
+        error: error,
       };
       const response = await fetch(url, {
         method: 'POST', // or 'PUT'
@@ -32,6 +33,8 @@
   <h3></h3>
   <script>
     console.log(tate);
+    // "test" ++;
+    
   </script>
 </body>
 
