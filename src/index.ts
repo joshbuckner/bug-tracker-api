@@ -45,11 +45,20 @@ app.get("/api/users", (req, res, next) => {
 // register user
 app.post("/api/register/", (req, res, next) => {
   let passwordHash: string;
-  const { email, password, name, access_token } = req.body;
+  const { email, password, name } = req.body;
   const { errors, isValid } = validateRegisterInput(req.body);
   if (!isValid) {
     return res.status(400).json(errors);
   }
+  const generateToken = (n: number) => {
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let token = "";
+    for (let i = 0; i < n; i++) {
+      token += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return token;
+  };
   bcrypt.genSalt(10, (error, salt) => {
     bcrypt.hash(password, salt, (er, hash) => {
       if (er) {
@@ -69,7 +78,7 @@ app.post("/api/register/", (req, res, next) => {
     } else {
       const sql =
         "INSERT INTO users (name, email, password, access_token) VALUES (?,?,?,?)";
-      const params = [name, email, passwordHash, access_token];
+      const params = [name, email, passwordHash, generateToken(14)];
       db.run(sql, params, function(error: { message: any }, result: any) {
         if (error) {
           res.status(400).json({ error: error.message });
@@ -119,8 +128,8 @@ app.post("/api/login/", (req, res, next) => {
           },
           (error, token) => {
             res.json({
-              success: true,
               token: "Bearer " + token,
+              user: { id: row.id, name: row.name, email: row.email, access_token: row.access_token },
             });
           },
         );
@@ -159,6 +168,29 @@ app.post("/api/event/:access_token/", (req, res) => {
         message: "success",
         params,
       });
+    });
+  });
+});
+
+app.use((req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(403).json({ error: "No authorization token" });
+  }
+  next();
+});
+
+// get events
+app.post("/api/events/", (req, res, next) => {
+  const { id } = req.body;
+  const sql = "select * from events where user_id = ?";
+  db.all(sql, id, (err: { message: any }, rows: any) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({
+      data: rows,
+      message: "success",
     });
   });
 });
