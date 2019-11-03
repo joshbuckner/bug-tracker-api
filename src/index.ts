@@ -116,6 +116,8 @@ app.post("/api/login/", (req, res, next) => {
         // User matched
         // Create JWT Payload
         const payload = {
+          access_token: row.access_token,
+          email: row.email,
           id: row.id,
           name: row.name,
         };
@@ -129,7 +131,6 @@ app.post("/api/login/", (req, res, next) => {
           (error, token) => {
             res.json({
               token: "Bearer " + token,
-              user: { id: row.id, name: row.name, email: row.email, access_token: row.access_token },
             });
           },
         );
@@ -176,6 +177,14 @@ app.use((req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(403).json({ error: "No authorization token" });
   }
+  jwt.verify(req.headers.authorization.replace("Bearer ", ""), process.env.SECRET_OR_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(400).json({ error: "Invalid token" });
+    } else {
+      // tslint:disable-next-line: no-console
+      console.log(decoded);
+    }
+  });
   next();
 });
 
