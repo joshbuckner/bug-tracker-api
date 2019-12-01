@@ -2,29 +2,7 @@
 <html>
 
 <head>
-  <script>
-    window.onerror = async function (message, file, line, column, error) {
-      const access_token = 'DcnzSEZngH2hKg';
-      const url = `http://localhost:8080/api/event/${access_token}`;
-      const data = {
-        date: new Date(),
-        message: message,
-        file: file,
-        line: line,
-        column: column,
-        error: error,
-      };
-      const response = await fetch(url, {
-        method: 'POST', // or 'PUT'
-        body: JSON.stringify(data), // data can be `string` or {object}!
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      const json = await response.json();
-      console.log('Success:', json);
-    };
-  </script>
+  <script>window.onerror=async function(e,n,o,t,a){const s={date:new Date,message:e,file:n,line:o,column:t,error:a},c=await fetch("http://localhost:8080/api/event/2ekHclCAxS5KO8",{method:"POST",body:JSON.stringify(s),headers:{"Content-Type":"application/json"}}),i=await c.json();console.log("Success:",i)};</script>
   <meta charset="utf-8" />
   <title>Test App</title>
 </head>
@@ -34,7 +12,7 @@
   <h3></h3>
   <script>
     console.log(tate);
-    // "test" ++;
+    //"test" ++;
     
   </script>
 </body>

@@ -43,11 +43,19 @@ app.get("/api/users", (req, res, next) => {
 // register user
 app.post("/api/register/", (req, res, next) => {
     let passwordHash;
-    const { email, password, name, access_token } = req.body;
+    const { email, password, name } = req.body;
     const { errors, isValid } = register_1.default(req.body);
     if (!isValid) {
         return res.status(400).json(errors);
     }
+    const generateToken = (n) => {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let token = "";
+        for (let i = 0; i < n; i++) {
+            token += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return token;
+    };
     bcryptjs_1.default.genSalt(10, (error, salt) => {
         bcryptjs_1.default.hash(password, salt, (er, hash) => {
             if (er) {
@@ -67,7 +75,7 @@ app.post("/api/register/", (req, res, next) => {
         }
         else {
             const sql = "INSERT INTO users (name, email, password, access_token) VALUES (?,?,?,?)";
-            const params = [name, email, passwordHash, access_token];
+            const params = [name, email, passwordHash, generateToken(14)];
             database_1.default.run(sql, params, function (error, result) {
                 if (error) {
                     res.status(400).json({ error: error.message });
@@ -104,6 +112,8 @@ app.post("/api/login/", (req, res, next) => {
                 // User matched
                 // Create JWT Payload
                 const payload = {
+                    access_token: row.access_token,
+                    email: row.email,
                     id: row.id,
                     name: row.name,
                 };
@@ -112,7 +122,6 @@ app.post("/api/login/", (req, res, next) => {
                     expiresIn: 31556926,
                 }, (error, token) => {
                     res.json({
-                        success: true,
                         token: "Bearer " + token,
                     });
                 });
@@ -150,6 +159,36 @@ app.post("/api/event/:access_token/", (req, res) => {
                 message: "success",
                 params,
             });
+        });
+    });
+});
+app.use((req, res, next) => {
+    if (!req.headers.authorization) {
+        return res.status(403).json({ error: "No authorization token" });
+    }
+    jsonwebtoken_1.default.verify(req.headers.authorization.replace("Bearer ", ""), process.env.SECRET_OR_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(400).json({ error: "Invalid token" });
+        }
+        else {
+            // tslint:disable-next-line: no-console
+            console.log(decoded);
+        }
+    });
+    next();
+});
+// get events
+app.post("/api/events/", (req, res, next) => {
+    const { id } = req.body;
+    const sql = "select * from events where user_id = ?";
+    database_1.default.all(sql, id, (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json({
+            data: rows,
+            message: "success",
         });
     });
 });

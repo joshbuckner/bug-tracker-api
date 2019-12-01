@@ -74,21 +74,43 @@ app.post("/api/register/", (req, res, next) => {
       return;
     }
     if (row) {
-      res.status(400).json({ error: "Email already exists" });
+      res.status(400).json({ email: "Email already exists" });
     } else {
       const sql =
         "INSERT INTO users (name, email, password, access_token) VALUES (?,?,?,?)";
-      const params = [name, email, passwordHash, generateToken(14)];
+      const token = generateToken(14);
+      const params = [name, email, passwordHash, token];
       db.run(sql, params, function(error: { message: any }, result: any) {
         if (error) {
           res.status(400).json({ error: error.message });
           return;
         }
-        res.json({
+        // Create JWT Payload
+        const payload = {
+          access_token: token,
+          email,
           id: this.lastID,
-          message: "success",
-          params,
-        });
+          name,
+        };
+        // Sign token
+        jwt.sign(
+          payload,
+          process.env.SECRET_OR_KEY,
+          {
+            expiresIn: 31556926, // 1 year in seconds
+          },
+          (errtoken, token) => {
+            res.json({
+              message: "success",
+              token: "Bearer " + token,
+            });
+          },
+        );
+        // res.json({
+        //   id: this.lastID,
+        //   message: "success",
+        //   params,
+        // });
       });
     }
   });
@@ -108,7 +130,7 @@ app.post("/api/login/", (req, res, next) => {
       return;
     }
     if (!row) {
-      return res.status(404).json({ error: "Email not found" });
+      return res.status(404).json({ email: "Email not found" });
     }
     // Check password
     bcrypt.compare(password, row.password).then((isMatch) => {
@@ -137,7 +159,7 @@ app.post("/api/login/", (req, res, next) => {
       } else {
         return res
           .status(400)
-          .json({ passwordincorrect: "Password incorrect" });
+          .json({ password: "Password incorrect" });
       }
     });
   });
