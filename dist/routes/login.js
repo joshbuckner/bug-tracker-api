@@ -6,8 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const login_1 = __importDefault(require("../validation/login"));
 // login user
 exports.default = (req, res, db, bcrypt, signJWT) => {
-    // tslint:disable-next-line: no-console
-    console.log("login");
     const { email, password } = req.body;
     const { errors, isValid } = login_1.default(req.body);
     if (!isValid) {
@@ -25,10 +23,7 @@ exports.default = (req, res, db, bcrypt, signJWT) => {
         // Check password
         bcrypt.compare(password, row.password).then((isMatch) => {
             if (isMatch) {
-                res.json({
-                    message: "success",
-                    token: "Bearer " + signJWT({ token: row.access_token, email: row.email, id: row.id, name: row.name }),
-                });
+                res.json(signJWT({ token: row.access_token, email: row.email, id: row.id, name: row.name }));
             }
             else {
                 return res.status(400).json({ password: "Password incorrect" });

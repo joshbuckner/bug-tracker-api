@@ -13,6 +13,7 @@ exports.generateToken = (n) => {
     return token;
 };
 exports.signJWT = ({ token, email, id, name }) => {
+    // tslint:disable-next-line: no-console
     // Create JWT Payload
     const payload = {
         email,
@@ -20,6 +21,8 @@ exports.signJWT = ({ token, email, id, name }) => {
         name,
         token,
     };
+    // tslint:disable-next-line: no-console
+    console.log(payload);
     // Sign token
     const signedToken = jsonwebtoken_1.default.sign(payload, process.env.SECRET_OR_KEY, {
         expiresIn: 31556926,

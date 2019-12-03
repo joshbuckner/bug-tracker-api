@@ -39,10 +39,7 @@ exports.default = (req, res, db, bcrypt, signJWT) => {
                     res.status(400).json({ error: error.message });
                     return;
                 }
-                res.json({
-                    message: "success",
-                    token: "Bearer " + signJWT({ token, email, id: this.lastID, name }),
-                });
+                res.json(signJWT({ token, email, id: this.lastID, name }));
             });
         }
     });
